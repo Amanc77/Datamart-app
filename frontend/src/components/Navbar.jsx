@@ -1,5 +1,7 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Database } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Navbar = () => {
   return (
@@ -9,15 +11,35 @@ const Navbar = () => {
           <Database className="h-8 w-8 text-blue-500" />
           <span className="text-xl font-bold text-blue-500">DataMart</span>
         </div>
-        <div className="flex gap-6  font-bold ">
-          <button className="text-gray-600 hover:text-blue-500 ">Home</button>
-          <button className="text-gray-600 hover:text-blue-500 ">
-            Marketplace
-          </button>
-          <button className="text-gray-600 hover:text-blue-500 ">
-            Pricing
-          </button>
-          <button className="text-gray-600 hover:text-blue-500 ">Login</button>
+        <div className="flex gap-6">
+          <Button
+            asChild
+            variant="ghost"
+            className="text-gray-600 hover:text-blue-500 font-bold transition-colors duration-200"
+          >
+            <Link to="/">Home</Link>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            className="text-gray-600 hover:text-blue-500 font-bold transition-colors duration-200"
+          >
+            <Link to="/marketplace">Marketplace</Link>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            className="text-gray-600 hover:text-blue-500 font-bold transition-colors duration-200"
+          >
+            <Link to="/pricing">Pricing</Link>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            className="text-gray-600 hover:text-blue-500 font-bold transition-colors duration-200"
+          >
+            <Link to="/login">Login</Link>
+          </Button>
         </div>
       </div>
     </nav>

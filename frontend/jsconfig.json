@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "references": [
+    {
+      "path": "./jsconfig.app.json"
+    },
+    {
+      "path": "./jsconfig.node.json"
+    }
+  ],
+  "files": []
+}
