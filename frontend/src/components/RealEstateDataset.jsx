@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/table";
 import axiosInstance from "../api/axios";
 import { toast } from "sonner";
+import { useDispatch } from "react-redux";
+import { fetchPurchases } from "@/features/purchaseSlice";
 
 const RealEstateDataset = () => {
   const [data, setData] = useState([]);
@@ -25,23 +27,29 @@ const RealEstateDataset = () => {
   });
   const [rowCount, setRowCount] = useState(100);
   const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     fetchData();
+    loadRazorpay();
   }, []);
+
+  const loadRazorpay = () => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    document.body.appendChild(script);
+  };
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.get("/datasets/estate");
-      console.log("API Response for Real Estate:", response.data);
-      const apiData = response.data;
-      const rows = apiData.data || (Array.isArray(apiData) ? apiData : []);
+      const res = await axiosInstance.get("/datasets/estate");
+      const rows = res.data.data || [];
       setData(rows);
-      setPreviewData(rows);
-    } catch (error) {
-      console.error("Error fetching real estate dataset:", error);
-      toast.error("Failed to fetch real estate dataset");
+      setPreviewData(rows.slice(0, rowCount));
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load data");
       setData([]);
       setPreviewData([]);
     } finally {
@@ -55,17 +63,16 @@ const RealEstateDataset = () => {
   };
 
   const applyFilters = () => {
-    let filtered = data;
+    let filtered = [...data];
+
     if (filters.city) {
       filtered = filtered.filter((item) =>
-        (item.city || "").toLowerCase().includes(filters.city.toLowerCase())
+        item.city?.toLowerCase().includes(filters.city.toLowerCase())
       );
     }
     if (filters.minPrice) {
       const min = parseInt(filters.minPrice);
-      if (!isNaN(min)) {
-        filtered = filtered.filter((item) => item.price >= min);
-      }
+      if (!isNaN(min)) filtered = filtered.filter((item) => item.price >= min);
     }
     if (filters.yearFrom || filters.yearTo) {
       const from = filters.yearFrom ? parseInt(filters.yearFrom) : -Infinity;
@@ -74,59 +81,106 @@ const RealEstateDataset = () => {
         (item) => item.yearBuilt >= from && item.yearBuilt <= to
       );
     }
-    filtered = filtered.sort((a, b) => b.price - a.price).slice(0, 10);
+
+    filtered = filtered.sort((a, b) => b.price - a.price).slice(0, rowCount);
     setPreviewData(filtered);
   };
 
-  const handlePurchase = () => {
-    const total = rowCount * 0.05;
-    toast.success(`Purchased ${rowCount} rows for $${total.toFixed(2)}!`);
+  const initiatePayment = async () => {
+    if (rowCount < 1) return toast.error("Row count must be at least 1");
+
+    try {
+      const res = await axiosInstance.post("/payments/checkout/dataset", {
+        datasetType: "realestate",
+        filters,
+        rowCount,
+      });
+
+      if (!res.data.success) throw new Error(res.data.message);
+
+      if (res.data.isFree) {
+        toast.success("Free dataset unlocked!");
+        dispatch(fetchPurchases());
+        return;
+      }
+
+      const options = {
+        key: res.data.key_id,
+        amount: res.data.amount_paise,
+        currency: "INR",
+        name: "DataMart",
+        description: `Real Estate - ${rowCount} rows`,
+        order_id: res.data.order_id,
+        handler: async (response) => {
+          try {
+            const verifyRes = await axiosInstance.post("/payments/verify", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            if (verifyRes.data.success) {
+              toast.success("Payment successful! Dataset ready.");
+              dispatch(fetchPurchases());
+            }
+          } catch (err) {
+            toast.error(`Verification failed: ${err?.message || err}`);
+          }
+        },
+        prefill: res.data.prefill,
+        theme: { color: "#10b981" },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", () => {
+        toast.error("Payment failed");
+      });
+      rzp.open();
+    } catch (err) {
+      toast.error(`Payment initiation failed: ${err.message}`);
+    }
   };
 
-  if (loading) {
+  if (loading)
     return (
-      <div className="p-6 bg-white flex items-center justify-center min-h-[400px]">
-        <div className="text-lg">Loading...</div>
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        Loading dataset...
       </div>
     );
-  }
 
   return (
     <div className="p-6 bg-white min-h-screen">
-      <h1 className="text-3xl font-bold mb-4 sticky top-0 bg-white z-10 py-4 border-b border-gray-200">
+      <h1 className="text-3xl font-bold mb-4 sticky top-0 bg-white z-10 py-4 border-b">
         Real Estate Listings
       </h1>
       <p className="text-gray-600 mb-6 text-lg">
-        Property listings with prices, locations, sizes, and market trends
-        across major cities
+        Property listings with prices, locations, sizes, and market trends.
       </p>
-      <div className="flex justify-between mb-6 sticky top-20 bg-white z-10 py-3 border-b border-gray-200">
+      <div className="flex justify-between mb-6 sticky top-16 bg-white z-10 py-3 border-b">
         <span className="text-lg font-semibold">Total Rows: 8,000</span>
         <span className="text-blue-600 text-lg font-semibold">
           Price: $0.05/row
         </span>
       </div>
+
       <Card className="border rounded-lg shadow-sm">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h2 className="text-xl font-semibold mb-3">
-                Preview Data (First 10 rows)
-              </h2>
-              <p className="text-gray-600 mb-4 text-sm">
-                Sample of the dataset to help you make your decision
+              <h2 className="text-xl font-semibold mb-3">Preview Data</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                First {previewData.length} rows (filtered)
               </p>
-              <div className="overflow-auto max-h-150 border rounded-md">
+              <div className="border rounded-md overflow-auto max-h-96">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="font-medium">City</TableHead>
-                      <TableHead className="font-medium">Price</TableHead>
-                      <TableHead className="font-medium">Bedrooms</TableHead>
-                      <TableHead className="font-medium">Sqft</TableHead>
-                      <TableHead className="font-medium">Bathrooms</TableHead>
-                      <TableHead className="font-medium">Year Built</TableHead>
-                      <TableHead className="font-medium">Property ID</TableHead>
+                      <TableHead>City</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Bed</TableHead>
+                      <TableHead>Sqft</TableHead>
+                      <TableHead>Bath</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>ID</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -134,24 +188,26 @@ const RealEstateDataset = () => {
                       <TableRow>
                         <TableCell
                           colSpan={7}
-                          className="text-center py-8 text-gray-500"
+                          className="text-center text-gray-500 py-8"
                         >
-                          No data available.
+                          No matching data
                         </TableCell>
                       </TableRow>
                     ) : (
-                      previewData.map((row, index) => (
+                      previewData.map((row, i) => (
                         <TableRow
-                          key={index}
-                          className={index % 2 === 0 ? "bg-gray-50" : ""}
+                          key={i}
+                          className={i % 2 === 0 ? "bg-gray-50" : ""}
                         >
                           <TableCell>{row.city || "N/A"}</TableCell>
-                          <TableCell>{row.price || "N/A"}</TableCell>
-                          <TableCell>{row.bedrooms || "N/A"}</TableCell>
-                          <TableCell>{row.sqft || "N/A"}</TableCell>
-                          <TableCell>{row.bathrooms || "N/A"}</TableCell>
-                          <TableCell>{row.yearBuilt || "N/A"}</TableCell>
-                          <TableCell>{row.propertyId || "N/A"}</TableCell>
+                          <TableCell>${row.price?.toLocaleString()}</TableCell>
+                          <TableCell>{row.bedrooms}</TableCell>
+                          <TableCell>{row.sqft}</TableCell>
+                          <TableCell>{row.bathrooms}</TableCell>
+                          <TableCell>{row.yearBuilt}</TableCell>
+                          <TableCell className="text-xs">
+                            {row.propertyId}
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -159,90 +215,68 @@ const RealEstateDataset = () => {
                 </Table>
               </div>
             </div>
+
             <div>
               <h2 className="text-xl font-semibold mb-3">Purchase Dataset</h2>
-              <p className="text-gray-600 mb-4 text-sm">
-                Customize your data purchase
-              </p>
+              <p className="text-sm text-gray-600 mb-4">Customize your data</p>
+
               <div className="space-y-4">
                 <div>
-                  <Label className="block mb-2 font-medium text-sm">
-                    Number of Rows
-                  </Label>
+                  <Label>Number of Rows</Label>
                   <Input
                     type="number"
+                    min="1"
                     value={rowCount}
-                    onChange={(e) => setRowCount(e.target.value)}
-                    className="w-full"
+                    onChange={(e) =>
+                      setRowCount(Math.max(1, parseInt(e.target.value) || 1))
+                    }
                   />
                 </div>
-                <p className="text-sm font-medium text-gray-700">
-                  Total Cost: ${(rowCount * 0.05).toFixed(2)}
+                <p className="font-medium">
+                  Total: <strong>${(rowCount * 0.05).toFixed(2)}</strong>{" "}
+                  (approx. ₹{(rowCount * 0.05 * 84).toFixed(2)})
                 </p>
-                <h3 className="font-semibold mb-3 text-sm">
-                  Filters (Optional)
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="block mb-1 font-medium text-sm">
-                      City
-                    </Label>
-                    <Input
-                      placeholder="Filter by city"
-                      name="city"
-                      value={filters.city}
-                      onChange={handleFilterChange}
-                      className="w-full"
-                    />
-                  </div>
-                  <div>
-                    <Label className="block mb-1 font-medium text-sm">
-                      Min Price
-                    </Label>
-                    <Input
-                      placeholder="Min price"
-                      name="minPrice"
-                      value={filters.minPrice}
-                      onChange={handleFilterChange}
-                      className="w-full"
-                    />
-                  </div>
-                  <div>
-                    <Label className="block mb-1 font-medium text-sm">
-                      Year From
-                    </Label>
-                    <Input
-                      placeholder="From year built"
-                      name="yearFrom"
-                      value={filters.yearFrom}
-                      onChange={handleFilterChange}
-                      className="w-full"
-                    />
-                  </div>
-                  <div>
-                    <Label className="block mb-1 font-medium text-sm">
-                      Year To
-                    </Label>
-                    <Input
-                      placeholder="To year built"
-                      name="yearTo"
-                      value={filters.yearTo}
-                      onChange={handleFilterChange}
-                      className="w-full"
-                    />
-                  </div>
+
+                <h3 className="font-semibold text-sm">Filters</h3>
+                <div className="space-y-3 text-sm">
+                  <Input
+                    placeholder="City"
+                    name="city"
+                    value={filters.city}
+                    onChange={handleFilterChange}
+                  />
+                  <Input
+                    placeholder="Min Price"
+                    name="minPrice"
+                    value={filters.minPrice}
+                    onChange={handleFilterChange}
+                  />
+                  <Input
+                    placeholder="Year From"
+                    name="yearFrom"
+                    value={filters.yearFrom}
+                    onChange={handleFilterChange}
+                  />
+                  <Input
+                    placeholder="Year To"
+                    name="yearTo"
+                    value={filters.yearTo}
+                    onChange={handleFilterChange}
+                  />
                 </div>
+
                 <Button
                   onClick={applyFilters}
-                  className="w-full mb-2 bg-blue-500 hover:bg-blue-600"
+                  className="w-full"
+                  variant="secondary"
                 >
                   Apply Filters
                 </Button>
                 <Button
-                  onClick={handlePurchase}
-                  className="w-full bg-green-500 hover:bg-green-600"
+                  onClick={initiatePayment}
+                  className="w-full bg-green-600 hover:bg-green-700"
                 >
-                  Purchase Dataset
+                  Purchase Now
                 </Button>
               </div>
             </div>

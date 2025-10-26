@@ -23,13 +23,16 @@ export const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
     });
-    const token = generateToken(user._id);
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "365d",
+    });
 
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      maxAge: 24 * 60 * 60 * 1000 * 7,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     const userData = {
@@ -76,13 +79,15 @@ export const loginUser = async (req, res) => {
         message: "Incorrect email or password",
       });
 
-    const token = generateToken(user._id);
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "365d",
+    });
 
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      maxAge: 24 * 60 * 60 * 1000 * 7,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     const userData = {

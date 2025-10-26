@@ -1,13 +1,8 @@
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Database, Download } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -16,49 +11,158 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { fetchPurchases } from "@/features/purchaseSlice";
+import { toast } from "sonner";
+import axiosInstance from "../api/axios";
 
 export default function MyPurchases() {
+  const dispatch = useDispatch();
+  const {
+    list: purchases = [],
+    loading,
+    error,
+  } = useSelector((state) => state.purchases || {});
+
+  useEffect(() => {
+    dispatch(fetchPurchases());
+  }, [dispatch]);
+
+  const handleDownload = async (id) => {
+    try {
+      const response = await axiosInstance.get(`/payments/downloads/${id}`, {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `dataset_${id}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(`Failed to download dataset: ${err.message}`);
+    }
+  };
+
+  const formatDate = (date) =>
+    new Date(date).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+
+  const getName = (type) =>
+    type === "realestate" ? "Real Estate" : "Startup Funding";
+
+  const getBadgeVariant = (status) => {
+    switch (status) {
+      case "completed":
+        return "success";
+      case "pending":
+        return "secondary";
+      case "failed":
+        return "destructive";
+      default:
+        return "outline";
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-600">
+        Loading your purchases...
+      </div>
+    );
+  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-500">
+        Failed to load purchases. Please log in again.
+      </div>
+    );
+
   return (
-    <>
-      <div className="min-h-screen ">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center  items-center gap-3 mb-8">
-            <Database className="h-10 w-10 text-primary" />
-            <div>
-              <h1 className="text-4xl font-bold">My Purchases</h1>
-              <p className="text-muted-foreground">
-                Download your purchased datasets
-              </p>
-            </div>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-10">
+        <div className="flex justify-center items-center gap-3 mb-10">
+          <Database className="h-10 w-10 text-primary" />
+          <div className="text-center">
+            <h1 className="text-4xl font-bold">My Purchases</h1>
+            <p className="text-muted-foreground">
+              Download your purchased datasets
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-lg border shadow-sm">
+          <div className="p-6 border-b">
+            <h2 className="text-2xl font-bold">Purchase History</h2>
+            <p className="text-muted-foreground">
+              All your dataset purchases and downloads
+            </p>
           </div>
 
-          <div className="bg-card rounded-lg border shadow-sm">
-            <div className="p-6 border-b">
-              <h2 className="text-2xl font-bold">Purchase History</h2>
-              <p className="text-muted-foreground">
-                All your dataset purchases and downloads
-              </p>
-            </div>
-            <div className="p-6">
-              <Table>
-                <TableHeader>
+          <div className="p-6 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Dataset</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Rows</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {purchases.length === 0 ? (
                   <TableRow>
-                    <TableHead>Dataset</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Rows</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Action</TableHead>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center text-muted-foreground py-10"
+                    >
+                      No purchases yet
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody></TableBody>
-              </Table>
-            </div>
+                ) : (
+                  purchases.map((p) => (
+                    <TableRow key={p._id}>
+                      <TableCell className="font-semibold">
+                        {getName(p.datasetType)}
+                      </TableCell>
+                      <TableCell>
+                        {p.datasetType === "realestate"
+                          ? "Property & Market Data"
+                          : "Startup Investment Data"}
+                      </TableCell>
+                      <TableCell>{p.rowCount}</TableCell>
+                      <TableCell>${p.amount?.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge variant={getBadgeVariant(p.status)}>
+                          {p.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatDate(p.createdAt)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleDownload(p._id)}
+                          disabled={p.status !== "completed"}
+                          className="flex items-center gap-1"
+                        >
+                          <Download className="h-4 w-4" /> CSV
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-          {/* End of placeholder - wrap with <Card> later */}
         </div>
       </div>
-    </>
+    </div>
   );
 }
