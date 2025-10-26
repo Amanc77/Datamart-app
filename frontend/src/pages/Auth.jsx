@@ -12,7 +12,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Database, Lock, Mail, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from "../../api/axios";
+import axiosInstance from "../api/axios";
 import { Toaster, toast } from "sonner";
 
 const Auth = () => {

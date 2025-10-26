@@ -24,14 +24,14 @@ const Navbar = () => {
             variant="ghost"
             className="text-gray-600 hover:text-blue-500 font-bold transition-colors duration-200"
           >
-            <Link to="/marketplace">Marketplace</Link>
+            <Link to="/datasets">Datasets</Link>
           </Button>
           <Button
             asChild
             variant="ghost"
             className="text-gray-600 hover:text-blue-500 font-bold transition-colors duration-200"
           >
-            <Link to="/pricing">Pricing</Link>
+            <Link to="/myPurchases">My Purchases</Link>
           </Button>
           <Button
             asChild
