@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./utils/connectDB.js";
+import authRoutes from "./routes/auth.routes.js";
 import { createDatasets } from "./utils/SampleDatasets.js";
 import datasetRoutes from "./routes/dataset.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
@@ -17,7 +18,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL || "https://datamart-app.vercel.app",
     credentials: true,
   })
 );
@@ -31,16 +32,14 @@ app.post(
   express.raw({ type: "application/json" }),
   razorpayWebhook
 );
+app.use("/api/auth", authRoutes);
 app.use("/api/datasets", datasetRoutes);
 app.use("/api/payments", paymentRoutes);
 
 app.get("/", (req, res) => res.send("server is running..."));
 
 app.use((err, req, res, next) => {
-  console.error(`Global error: ${err.message}`, { stack: err.stack });
   res.status(500).json({ success: false, message: "Internal Server Error" });
 });
 
-app.listen(PORT, () =>
-  console.log(`Server running on http://localhost:${PORT}`)
-);
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -12,11 +12,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Database, Lock, Mail, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { userLoggedIn } from "@/features/authSlice";
 import axiosInstance from "../api/axios";
 import { Toaster, toast } from "sonner";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [user, setUser] = useState({
     name: "",
     email: "",
@@ -47,6 +50,7 @@ const Auth = () => {
       });
 
       if (response.data.success) {
+        dispatch(userLoggedIn({ user: response.data.user }));
         toast.success(response.data.message);
         navigate("/");
       } else {
@@ -76,6 +80,7 @@ const Auth = () => {
       });
 
       if (response.data.success) {
+        dispatch(userLoggedIn({ user: response.data.user }));
         toast.success(response.data.message);
         navigate("/");
       } else {

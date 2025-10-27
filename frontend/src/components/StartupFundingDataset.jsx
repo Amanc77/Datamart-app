@@ -11,10 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axios";
 import { toast } from "sonner";
 import { useDispatch } from "react-redux";
 import { fetchPurchases } from "@/features/purchaseSlice";
+import DatasetSkeleton from "./DatasetSkeleton";
 
 const StartupFundingDataset = () => {
   const [data, setData] = useState([]);
@@ -29,6 +32,8 @@ const StartupFundingDataset = () => {
   const [rowCount, setRowCount] = useState(50);
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state) => state.auth || {});
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
@@ -47,7 +52,7 @@ const StartupFundingDataset = () => {
       const res = await axiosInstance.get("/datasets/fundedstartup");
       const rows = res.data.data || [];
       setData(rows);
-      setPreviewData(rows.slice(0, `${rowCount}`));
+      setPreviewData(rows.slice(0, rowCount));
     } catch (err) {
       console.error(err);
       toast.error("Failed to load data");
@@ -93,6 +98,11 @@ const StartupFundingDataset = () => {
   };
 
   const initiatePayment = async () => {
+    if (!isAuthenticated) {
+      toast.error("Login first");
+      navigate("/login");
+      return;
+    }
     if (rowCount < 1) return toast.error("Row count too low");
 
     try {
@@ -139,7 +149,9 @@ const StartupFundingDataset = () => {
     }
   };
 
-  if (loading) return <div className="p-6 text-center">Loading...</div>;
+  if (loading) {
+    return <DatasetSkeleton columnCount={6} />;
+  }
 
   return (
     <div className="p-6 bg-white min-h-screen">
@@ -259,8 +271,7 @@ const StartupFundingDataset = () => {
 
                 <Button
                   onClick={applyFilters}
-                  className="w-full"
-                  variant="secondary"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   Apply Filters
                 </Button>

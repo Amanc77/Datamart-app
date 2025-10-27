@@ -11,10 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axios";
 import { toast } from "sonner";
 import { useDispatch } from "react-redux";
 import { fetchPurchases } from "@/features/purchaseSlice";
+import DatasetSkeleton from "./DatasetSkeleton";
 
 const RealEstateDataset = () => {
   const [data, setData] = useState([]);
@@ -28,6 +31,8 @@ const RealEstateDataset = () => {
   const [rowCount, setRowCount] = useState(100);
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state) => state.auth || {});
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
@@ -87,6 +92,11 @@ const RealEstateDataset = () => {
   };
 
   const initiatePayment = async () => {
+    if (!isAuthenticated) {
+      toast.error("you need to Login first");
+      navigate("/login");
+      return;
+    }
     if (rowCount < 1) return toast.error("Row count must be at least 1");
 
     try {
@@ -140,12 +150,9 @@ const RealEstateDataset = () => {
     }
   };
 
-  if (loading)
-    return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
-        Loading dataset...
-      </div>
-    );
+  if (loading) {
+    return <DatasetSkeleton columnCount={7} />;
+  }
 
   return (
     <div className="p-6 bg-white min-h-screen">
@@ -267,8 +274,7 @@ const RealEstateDataset = () => {
 
                 <Button
                   onClick={applyFilters}
-                  className="w-full"
-                  variant="secondary"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   Apply Filters
                 </Button>

@@ -11,9 +11,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchPurchases } from "@/features/purchaseSlice";
 import { toast } from "sonner";
 import axiosInstance from "../api/axios";
+import { Link } from "react-router-dom";
 
 export default function MyPurchases() {
   const dispatch = useDispatch();
@@ -22,10 +24,13 @@ export default function MyPurchases() {
     loading,
     error,
   } = useSelector((state) => state.purchases || {});
+  const { isAuthenticated } = useSelector((state) => state.auth || {});
 
   useEffect(() => {
-    dispatch(fetchPurchases());
-  }, [dispatch]);
+    if (isAuthenticated) {
+      dispatch(fetchPurchases());
+    }
+  }, [dispatch, isAuthenticated]);
 
   const handleDownload = async (id) => {
     try {
@@ -68,12 +73,66 @@ export default function MyPurchases() {
     }
   };
 
-  if (loading)
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-600">
-        Loading your purchases...
+      <div className="min-h-screen flex items-center justify-center text-gray-600 flex-col gap-4">
+        <p>Please login first to view your purchases.</p>
+        <Link to="/login">
+          <Button>Login</Button>
+        </Link>
       </div>
     );
+  }
+
+  if (loading) {
+    return (
+      //added skeleton
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-10">
+          <div className="flex justify-center items-center gap-3 mb-10">
+            <Database className="h-10 w-10 text-primary" />
+            <div className="text-center">
+              <Skeleton className="h-10 w-[200px]" />
+              <Skeleton className="h-4 w-[300px] mt-2" />
+            </div>
+          </div>
+
+          <div className="bg-card rounded-lg border shadow-sm">
+            <div className="p-6 border-b">
+              <Skeleton className="h-8 w-[200px]" />
+              <Skeleton className="h-4 w-[300px] mt-2" />
+            </div>
+
+            <div className="p-6 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <TableHead key={i}>
+                        <Skeleton className="h-4 w-[100px]" />
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 7 }).map((_, j) => (
+                        <TableCell key={j}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error)
     return (
       <div className="min-h-screen flex items-center justify-center text-red-500">

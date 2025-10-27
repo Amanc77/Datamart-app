@@ -105,7 +105,40 @@ export const loginUser = async (req, res) => {
     console.log(error);
     return res.status(500).json({
       success: false,
-      message: "Failed to register",
+      message: "Failed to login",
     });
+  }
+};
+
+export const logoutUser = async (_, res) => {
+  try {
+    return res
+      .status(200)
+      .cookie("token", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 0,
+      })
+      .json({ success: true, message: "Logged out Successfully" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to Logout" });
+  }
+};
+
+export const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.id).select("_id name email");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };

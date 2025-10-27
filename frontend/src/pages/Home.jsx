@@ -1,6 +1,6 @@
 import React from "react";
 import { Database, TrendingUp, Shield, Zap, ArrowRight } from "lucide-react";
-
+import { Link } from "react-router-dom";
 const Home = () => {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -17,12 +17,16 @@ const Home = () => {
           precisely and pay only for what you use.
         </p>
         <div className="flex gap-4 justify-center">
-          <button className="px-6 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2 hover:bg-blue-600 ">
-            Get Started <ArrowRight className="h-4 w-4" />
-          </button>
-          <button className="px-6 py-2 border border-blue-500 text-blue-500 rounded-md hover:bg-gray-200 ">
-            Browse Datasets
-          </button>
+          <Link to="/login">
+            <button className="px-6 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2 hover:bg-blue-600 ">
+              Get Started <ArrowRight className="h-4 w-4" />
+            </button>
+          </Link>
+          <Link to="/datasets">
+            <button className="px-6 py-2 border border-blue-500 text-blue-500 rounded-md hover:bg-gray-200 ">
+              Browse Datasets
+            </button>
+          </Link>
         </div>
       </section>
 
@@ -72,9 +76,11 @@ const Home = () => {
           <p className="text-lg mb-6">
             Join thousands of businesses unlocking insights with DataMart.
           </p>
-          <button className="px-6 py-2 bg-white text-blue-500 rounded-md hover:bg-gray-100 ">
-            Create Free Account
-          </button>
+          <Link to="/login">
+            <button className="px-6 py-2 bg-white text-blue-500 rounded-md hover:bg-gray-100 ">
+              Create Free Account
+            </button>
+          </Link>
         </div>
       </section>
     </div>
